@@ -1,0 +1,137 @@
+---
+{
+   "kind": "pipeline",
+   "name": "build_image_amd64",
+   "platform": {
+      "arch": "amd64",
+      "os": "linux"
+   },
+   "steps": [
+      {
+         "image": "plugins/docker",
+         "name": "build_image",
+         "settings": {
+            "build_args": [
+               "ALPINE_VERSION=3.18.3",
+               "BUILD_IMAGE_TAG=1.21.1-alpine",
+               "GOARCH=[\"amd64\"]"
+            ],
+            "dockerfile": "Dockerfile",
+            "label_schema": [
+               "docker.dockerfile=Dockerfile"
+            ],
+            "password": {
+               "from_secret": "docker_password"
+            },
+            "repo": "nerfd/drone-email",
+            "tags": [
+               "latest-amd64"
+            ],
+            "username": {
+               "from_secret": "docker_username"
+            }
+         }
+      }
+   ],
+   "trigger": {
+      "branch": [
+         "master"
+      ],
+      "event": [
+         "push",
+         "custom"
+      ]
+   },
+   "type": "docker"
+}
+---
+{
+   "kind": "pipeline",
+   "name": "build_image_arm64",
+   "platform": {
+      "arch": "arm64",
+      "os": "linux"
+   },
+   "steps": [
+      {
+         "image": "plugins/docker",
+         "name": "build_image",
+         "settings": {
+            "build_args": [
+               "ALPINE_VERSION=3.18.3",
+               "BUILD_IMAGE_TAG=1.21.1-alpine",
+               "GOARCH=[\"arm\"]"
+            ],
+            "dockerfile": "Dockerfile",
+            "label_schema": [
+               "docker.dockerfile=Dockerfile"
+            ],
+            "password": {
+               "from_secret": "docker_password"
+            },
+            "repo": "nerfd/drone-email",
+            "tags": [
+               "latest-arm64"
+            ],
+            "username": {
+               "from_secret": "docker_username"
+            }
+         }
+      }
+   ],
+   "trigger": {
+      "branch": [
+         "master"
+      ],
+      "event": [
+         "push",
+         "custom"
+      ]
+   },
+   "type": "docker"
+}
+---
+{
+   "depends_on": [
+      "build_image_amd64",
+      "build_image_arm64"
+   ],
+   "kind": "pipeline",
+   "name": "multiarch_image",
+   "steps": [
+      {
+         "image": "plugins/manifest",
+         "name": "multiarch_image",
+         "settings": {
+            "password": {
+               "from_secret": "docker_password"
+            },
+            "platforms": [
+               "linux/amd64",
+               "linux/arm64"
+            ],
+            "target": "nerfd/drone-email:latest",
+            "template": "nerfd/drone-email:latest-ARCH",
+            "username": {
+               "from_secret": "docker_username"
+            }
+         }
+      }
+   ],
+   "trigger": {
+      "branch": [
+         "master"
+      ],
+      "event": [
+         "push",
+         "custom"
+      ]
+   },
+   "type": "docker"
+}
+---
+{
+   "hmac": "0000000000000000000000000000000000000000000000000000000000000000",
+   "kind": "signature"
+}
+...
