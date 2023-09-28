@@ -156,8 +156,8 @@ const DefaultTemplate = `
 <body>
     <div class="content">
         <p style="margin-top: 0;">
-            This is the report of your most recent drone pipeline build.
-            It finished {{ datetime build.finished "Mon Jan 2 15:04:05 MST 2006" "Local" }}.
+            Build was created at {{ datetime build.created "Mon Jan 2 15:04:05 MST 2006" "Local" }}.
+            It waited {{ duration build.created build.started }} and ran for {{ duration build.started build.finished }}.
         </p>
 
         <p>
@@ -232,14 +232,6 @@ const DefaultTemplate = `
                         </td>
                         <td>
                             <a href="{{repo.link}}">{{repo.fullName}}</a>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td>
-                            Started at:
-                        </td>
-                        <td>
-                            {{ datetime build.created "Mon Jan 2 15:04:05 MST 2006" "Local" }}
                         </td>
                     </tr>
                 </table>
