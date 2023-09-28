@@ -130,21 +130,21 @@ func (p Plugin) prepareMessage() (*gomail.Message, error) {
 	// Render body in HTML and plain text
 	renderedBody, err := template.RenderTrim(p.Config.Body, p.BuildContext)
 	if err != nil {
-		return nil, fmt.Errorf("Could not render body template: %v", err)
+		return nil, fmt.Errorf("could not render body template: %v", err)
 	}
 	html, err := inliner.Inline(renderedBody)
 	if err != nil {
-		return nil, fmt.Errorf("Could not inline rendered body: %v", err)
+		return nil, fmt.Errorf("could not inline rendered body: %v", err)
 	}
 	plainBody, err := html2text.FromString(html)
 	if err != nil {
-		return nil, fmt.Errorf("Could not convert html to text: %v", err)
+		return nil, fmt.Errorf("could not convert html to text: %v", err)
 	}
 
 	// Render subject
 	subject, err := template.RenderTrim(p.Config.Subject, p.BuildContext)
 	if err != nil {
-		return nil, fmt.Errorf("Could not render subject template: %v", err)
+		return nil, fmt.Errorf("could not render subject template: %v", err)
 	}
 
 	message := gomail.NewMessage()
@@ -193,7 +193,7 @@ func (p Plugin) Exec() error {
 				p.Config.Recipients = append(p.Config.Recipients, scanner.Text())
 			}
 		} else {
-			return fmt.Errorf("Could not open RecipientsFile %s: %v", p.Config.RecipientsFile, err)
+			return fmt.Errorf("could not open RecipientsFile %s: %v", p.Config.RecipientsFile, err)
 		}
 	}
 

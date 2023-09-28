@@ -74,8 +74,7 @@ func TestPlugin(t *testing.T) {
 	splitAddr := strings.Split(addr, ":")
 
 	for i, tcase := range cases {
-		args := append(tcase.args, "--host="+splitAddr[0])
-		args = append(tcase.args, "--port="+splitAddr[1])
+		args := append(tcase.args, []string{"--host=" + splitAddr[0], "--port=" + splitAddr[1]}...)
 		err := app.Run(args)
 		if tcase.errorText == "" {
 			if err != nil {
