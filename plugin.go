@@ -3,13 +3,17 @@ package main
 import (
 	"bufio"
 	"crypto/tls"
+	"errors"
+	"fmt"
 	"os"
+	"strings"
 
 	"github.com/aymerick/douceur/inliner"
 	"github.com/drone/drone-go/template"
-	"github.com/jaytaylor/html2text"
-	log "github.com/sirupsen/logrus"
+	"github.com/emersion/go-sasl"
+	"github.com/emersion/go-smtp"
 	gomail "github.com/go-mail/mail"
+	"github.com/jaytaylor/html2text"
 )
 
 type (
@@ -100,6 +104,11 @@ type (
 	}
 
 	Plugin struct {
+		BuildContext
+		Config Config
+	}
+
+	BuildContext struct {
 		Repo        Repo
 		Remote      Remote
 		Commit      Commit
@@ -110,15 +119,60 @@ type (
 		Tag         string
 		PullRequest int
 		DeployTo    string
-		Config      Config
 	}
 )
 
+var (
+	ErrDroneSanity = errors.New("failed sanity check: no finish time for build")
+)
+
+func (p Plugin) prepareMessage() (*gomail.Message, error) {
+	// Render body in HTML and plain text
+	renderedBody, err := template.RenderTrim(p.Config.Body, p.BuildContext)
+	if err != nil {
+		return nil, fmt.Errorf("Could not render body template: %v", err)
+	}
+	html, err := inliner.Inline(renderedBody)
+	if err != nil {
+		return nil, fmt.Errorf("Could not inline rendered body: %v", err)
+	}
+	plainBody, err := html2text.FromString(html)
+	if err != nil {
+		return nil, fmt.Errorf("Could not convert html to text: %v", err)
+	}
+
+	// Render subject
+	subject, err := template.RenderTrim(p.Config.Subject, p.BuildContext)
+	if err != nil {
+		return nil, fmt.Errorf("Could not render subject template: %v", err)
+	}
+
+	message := gomail.NewMessage()
+	message.SetAddressHeader("From", p.Config.FromAddress, p.Config.FromName)
+	message.SetHeader("To", strings.Join(p.Config.Recipients, ", "))
+	message.SetHeader("Subject", subject)
+	message.AddAlternative("text/plain", plainBody)
+	message.AddAlternative("text/html", html)
+
+	if p.Config.Attachment != "" {
+		message.Attach(p.Config.Attachment)
+	}
+
+	for _, attachment := range p.Config.Attachments {
+		message.Attach(attachment)
+	}
+
+	return message, nil
+}
+
 // Exec will send emails over SMTP
 func (p Plugin) Exec() error {
-	var dialer *gomail.Dialer
 
-	if !p.Config.RecipientsOnly {
+	if p.Build.Finished == 0 {
+		return ErrDroneSanity
+	}
+
+	if !p.Config.RecipientsOnly && p.Commit.Author.Email != "" {
 		exists := false
 		for _, recipient := range p.Config.Recipients {
 			if recipient == p.Commit.Author.Email {
@@ -139,113 +193,70 @@ func (p Plugin) Exec() error {
 				p.Config.Recipients = append(p.Config.Recipients, scanner.Text())
 			}
 		} else {
-			log.Errorf("Could not open RecipientsFile %s: %v", p.Config.RecipientsFile, err)
+			return fmt.Errorf("Could not open RecipientsFile %s: %v", p.Config.RecipientsFile, err)
 		}
-	}
-
-	if p.Config.Username == "" && p.Config.Password == "" {
-		dialer = &gomail.Dialer{Host: p.Config.Host, Port: p.Config.Port}
-	} else {
-		dialer = gomail.NewDialer(p.Config.Host, p.Config.Port, p.Config.Username, p.Config.Password)
-	}
-
-	if p.Config.SkipVerify {
-		dialer.TLSConfig = &tls.Config{InsecureSkipVerify: true}
-	}
-
-	if p.Config.NoStartTLS {
-		dialer.StartTLSPolicy = gomail.NoStartTLS
-	}
-
-	dialer.LocalName = p.Config.ClientHostname
-
-	closer, err := dialer.Dial()
-	if err != nil {
-		log.Errorf("Error while dialing SMTP server: %v", err)
-		return err
-	}
-
-	type Context struct {
-		Repo        Repo
-		Remote      Remote
-		Commit      Commit
-		Build       Build
-		Prev        Prev
-		Job         Job
-		Yaml        Yaml
-		Tag         string
-		PullRequest int
-		DeployTo    string
-	}
-	ctx := Context{
-		Repo:        p.Repo,
-		Remote:      p.Remote,
-		Commit:      p.Commit,
-		Build:       p.Build,
-		Prev:        p.Prev,
-		Job:         p.Job,
-		Yaml:        p.Yaml,
-		Tag:         p.Tag,
-		PullRequest: p.PullRequest,
-		DeployTo:    p.DeployTo,
-	}
-
-	// Render body in HTML and plain text
-	renderedBody, err := template.RenderTrim(p.Config.Body, ctx)
-	if err != nil {
-		log.Errorf("Could not render body template: %v", err)
-		return err
-	}
-	html, err := inliner.Inline(renderedBody)
-	if err != nil {
-		log.Errorf("Could not inline rendered body: %v", err)
-		return err
-	}
-	plainBody, err := html2text.FromString(html)
-	if err != nil {
-		log.Errorf("Could not convert html to text: %v", err)
-		return err
-	}
-
-	// Render subject
-	subject, err := template.RenderTrim(p.Config.Subject, ctx)
-	if err != nil {
-		log.Errorf("Could not render subject template: %v", err)
-		return err
 	}
 
 	// Send emails
-	message := gomail.NewMessage()
-	for _, recipient := range p.Config.Recipients {
-		if len(recipient) == 0 {
-			continue
-		}
-		message.SetAddressHeader("From", p.Config.FromAddress, p.Config.FromName)
-		message.SetAddressHeader("To", recipient, "")
-		message.SetHeader("Subject", subject)
-		message.AddAlternative("text/plain", plainBody)
-		message.AddAlternative("text/html", html)
+	message, err := p.prepareMessage()
+	if err != nil {
+		return err
+	}
+	defer message.Reset()
 
-		if p.Config.Attachment != "" {
-			attach(message, p.Config.Attachment)
-		}
-
-		for _, attachment := range p.Config.Attachments {
-			attach(message, attachment)
-		}
-
-		if err := gomail.Send(closer, message); err != nil {
-			log.Errorf("Could not send email to %q: %v", recipient, err)
-			return err
-		}
-		message.Reset()
+	client, err := smtp.Dial(fmt.Sprintf("%s:%d", p.Config.Host, p.Config.Port))
+	if err != nil {
+		return fmt.Errorf("dial failed: %v", err)
 	}
 
+	if !p.Config.NoStartTLS {
+		tlsConfig := &tls.Config{}
+		if p.Config.SkipVerify {
+			tlsConfig.InsecureSkipVerify = true
+		}
+		err := client.StartTLS(tlsConfig)
+		if err != nil {
+			return fmt.Errorf("starttls failed: %v", err)
+		}
+	}
+
+	if p.Config.Username != "" && p.Config.Password != "" {
+		auth := sasl.NewPlainClient("", p.Config.Username, p.Config.Password)
+		authErr := client.Auth(auth)
+		if authErr != nil {
+			return fmt.Errorf("auth failed: %v", err)
+		}
+	}
+
+	err = client.Mail(p.Config.FromAddress, nil)
+	if err != nil {
+		return fmt.Errorf("error at mail from: %v", err)
+	}
+
+	for _, rcpt := range p.Config.Recipients {
+		err = client.Rcpt(rcpt, nil)
+		if err != nil {
+			return fmt.Errorf("error at rcpt(%s) phase: %v", rcpt, err)
+		}
+	}
+
+	writer, err := client.Data()
+	if err != nil {
+		return fmt.Errorf("error before DATA phase: %v", err)
+	}
+
+	_, err = message.WriteTo(writer)
+	if err != nil {
+		return fmt.Errorf("error writing body: %v", err)
+	}
+	err = writer.Close()
+	if err != nil {
+		return fmt.Errorf("error after DATA: %v", err)
+	}
+
+	err = client.Quit()
+	if err != nil {
+		return fmt.Errorf("error on quit: %v", err)
+	}
 	return nil
-}
-
-func attach(message *gomail.Message, attachment string) {
-	if _, err := os.Stat(attachment); err == nil {
-		message.Attach(attachment)
-	}
 }

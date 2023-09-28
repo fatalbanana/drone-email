@@ -5,6 +5,8 @@ go 1.21.0
 require (
 	github.com/aymerick/douceur v0.2.1-0.20150827151352-7176f1467381
 	github.com/drone/drone-go v0.0.0-20160728162628-e34150a175e6
+	github.com/emersion/go-sasl v0.0.0-20200509203442-7bfe0ed36a21
+	github.com/emersion/go-smtp v0.18.1
 	github.com/go-mail/mail v2.3.1+incompatible
 	github.com/jaytaylor/html2text v0.0.0-20230321000545-74c2419ad056
 	github.com/joho/godotenv v1.5.1

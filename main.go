@@ -8,7 +8,110 @@ import (
 	"github.com/urfave/cli"
 )
 
+var (
+	app *cli.App
+)
+
 func main() {
+
+	if err := app.Run(os.Args); err != nil {
+		log.Fatal(err)
+		os.Exit(1)
+	}
+}
+
+func run(c *cli.Context) error {
+
+	var fromAddress string = c.String("from")
+	if fromAddress == "" {
+		fromAddress = c.String("from.address")
+	}
+
+	plugin := Plugin{
+		BuildContext: BuildContext{
+			Repo: Repo{
+				FullName: c.String("repo.fullName"),
+				Owner:    c.String("repo.owner"),
+				Name:     c.String("repo.name"),
+				SCM:      c.String("repo.scm"),
+				Link:     c.String("repo.link"),
+				Avatar:   c.String("repo.avatar"),
+				Branch:   c.String("repo.branch"),
+				Private:  c.Bool("repo.private"),
+				Trusted:  c.Bool("repo.trusted"),
+			},
+			Remote: Remote{
+				URL: c.String("remote.url"),
+			},
+			Commit: Commit{
+				Sha:     c.String("commit.sha"),
+				Ref:     c.String("commit.ref"),
+				Branch:  c.String("commit.branch"),
+				Link:    c.String("commit.link"),
+				Message: c.String("commit.message"),
+				Author: Author{
+					Name:   c.String("commit.author.name"),
+					Email:  c.String("commit.author.email"),
+					Avatar: c.String("commit.author.avatar"),
+				},
+			},
+			Build: Build{
+				Number:   c.Int("build.number"),
+				Event:    c.String("build.event"),
+				Status:   c.String("build.status"),
+				Link:     c.String("build.link"),
+				Created:  c.Int64("build.created"),
+				Started:  c.Int64("build.started"),
+				Finished: c.Int64("build.finished"),
+			},
+			Prev: Prev{
+				Build: PrevBuild{
+					Status: c.String("prev.build.status"),
+					Number: c.Int("prev.build.number"),
+				},
+				Commit: PrevCommit{
+					Sha: c.String("prev.commit.sha"),
+				},
+			},
+			Job: Job{
+				Status:   c.String("job.status"),
+				ExitCode: c.Int("job.exitCode"),
+				Started:  c.Int64("job.started"),
+				Finished: c.Int64("job.finished"),
+			},
+			Yaml: Yaml{
+				Signed:   c.Bool("yaml.signed"),
+				Verified: c.Bool("yaml.verified"),
+			},
+			Tag:         c.String("tag"),
+			PullRequest: c.Int("pullRequest"),
+			DeployTo:    c.String("deployTo"),
+		},
+		Config: Config{
+			FromAddress:    fromAddress,
+			FromName:       c.String("from.name"),
+			Host:           c.String("host"),
+			Port:           c.Int("port"),
+			Username:       c.String("username"),
+			Password:       c.String("password"),
+			SkipVerify:     c.Bool("skip.verify"),
+			NoStartTLS:     c.Bool("no.starttls"),
+			Recipients:     c.StringSlice("recipients"),
+			RecipientsFile: c.String("recipients.file"),
+			RecipientsOnly: c.Bool("recipients.only"),
+			Subject:        c.String("template.subject"),
+			Body:           c.String("template.body"),
+			Attachment:     c.String("attachment"),
+			Attachments:    c.StringSlice("attachments"),
+			ClientHostname: c.String("clienthostname"),
+		},
+	}
+
+	return plugin.Exec()
+}
+
+func init() {
+
 	// Load env-file if it exists first
 	envFile, envFileSet := os.LookupEnv("PLUGIN_ENV_FILE")
 	if !envFileSet {
@@ -18,7 +121,7 @@ func main() {
 		godotenv.Overload(envFile)
 	}
 
-	app := cli.NewApp()
+	app = cli.NewApp()
 	app.Name = "email plugin"
 	app.Usage = "email plugin"
 	app.Action = run
@@ -333,96 +436,4 @@ func main() {
 		},
 	}
 
-	if err := app.Run(os.Args); err != nil {
-		log.Fatal(err)
-		os.Exit(1)
-	}
-}
-
-func run(c *cli.Context) error {
-
-	var fromAddress string = c.String("from")
-	if fromAddress == "" {
-		fromAddress = c.String("from.address")
-	}
-
-	plugin := Plugin{
-		Repo: Repo{
-			FullName: c.String("repo.fullName"),
-			Owner:    c.String("repo.owner"),
-			Name:     c.String("repo.name"),
-			SCM:      c.String("repo.scm"),
-			Link:     c.String("repo.link"),
-			Avatar:   c.String("repo.avatar"),
-			Branch:   c.String("repo.branch"),
-			Private:  c.Bool("repo.private"),
-			Trusted:  c.Bool("repo.trusted"),
-		},
-		Remote: Remote{
-			URL: c.String("remote.url"),
-		},
-		Commit: Commit{
-			Sha:     c.String("commit.sha"),
-			Ref:     c.String("commit.ref"),
-			Branch:  c.String("commit.branch"),
-			Link:    c.String("commit.link"),
-			Message: c.String("commit.message"),
-			Author: Author{
-				Name:   c.String("commit.author.name"),
-				Email:  c.String("commit.author.email"),
-				Avatar: c.String("commit.author.avatar"),
-			},
-		},
-		Build: Build{
-			Number:   c.Int("build.number"),
-			Event:    c.String("build.event"),
-			Status:   c.String("build.status"),
-			Link:     c.String("build.link"),
-			Created:  c.Int64("build.created"),
-			Started:  c.Int64("build.started"),
-			Finished: c.Int64("build.finished"),
-		},
-		Prev: Prev{
-			Build: PrevBuild{
-				Status: c.String("prev.build.status"),
-				Number: c.Int("prev.build.number"),
-			},
-			Commit: PrevCommit{
-				Sha: c.String("prev.commit.sha"),
-			},
-		},
-		Job: Job{
-			Status:   c.String("job.status"),
-			ExitCode: c.Int("job.exitCode"),
-			Started:  c.Int64("job.started"),
-			Finished: c.Int64("job.finished"),
-		},
-		Yaml: Yaml{
-			Signed:   c.Bool("yaml.signed"),
-			Verified: c.Bool("yaml.verified"),
-		},
-		Tag:         c.String("tag"),
-		PullRequest: c.Int("pullRequest"),
-		DeployTo:    c.String("deployTo"),
-		Config: Config{
-			FromAddress:    fromAddress,
-			FromName:       c.String("from.name"),
-			Host:           c.String("host"),
-			Port:           c.Int("port"),
-			Username:       c.String("username"),
-			Password:       c.String("password"),
-			SkipVerify:     c.Bool("skip.verify"),
-			NoStartTLS:     c.Bool("no.starttls"),
-			Recipients:     c.StringSlice("recipients"),
-			RecipientsFile: c.String("recipients.file"),
-			RecipientsOnly: c.Bool("recipients.only"),
-			Subject:        c.String("template.subject"),
-			Body:           c.String("template.body"),
-			Attachment:     c.String("attachment"),
-			Attachments:    c.StringSlice("attachments"),
-			ClientHostname: c.String("clienthostname"),
-		},
-	}
-
-	return plugin.Exec()
 }
