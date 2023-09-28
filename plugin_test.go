@@ -11,8 +11,8 @@ import (
 
 var (
 	cases = []testCase{
-		testCase{[]string{"drone-email"}, "failed sanity check: no finish time for build"},
-		testCase{[]string{"drone-email", "--recipients=foo@example.com", "--no.starttls", "--build.finished=1"}, ""},
+		{[]string{"drone-email"}, "failed sanity check: no finish time for build"},
+		{[]string{"drone-email", "--recipients=foo@example.com", "--no.starttls", "--build.finished=1"}, ""},
 	}
 )
 
