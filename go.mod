@@ -5,11 +5,11 @@ go 1.21.0
 require (
 	github.com/aymerick/douceur v0.2.1-0.20150827151352-7176f1467381
 	github.com/drone/drone-go v0.0.0-20160728162628-e34150a175e6
+	github.com/go-mail/mail v2.3.1+incompatible
 	github.com/jaytaylor/html2text v0.0.0-20230321000545-74c2419ad056
 	github.com/joho/godotenv v1.5.1
 	github.com/sirupsen/logrus v1.9.3
 	github.com/urfave/cli v1.22.14
-	gopkg.in/mail.v2 v2.3.1
 )
 
 require (
@@ -27,4 +27,5 @@ require (
 	golang.org/x/oauth2 v0.12.0 // indirect
 	golang.org/x/sys v0.12.0 // indirect
 	gopkg.in/alexcesaro/quotedprintable.v3 v3.0.0-20150716171945-2caba252f4dc // indirect
+	gopkg.in/mail.v2 v2.3.1 // indirect
 )

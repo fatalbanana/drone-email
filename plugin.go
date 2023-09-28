@@ -9,7 +9,7 @@ import (
 	"github.com/drone/drone-go/template"
 	"github.com/jaytaylor/html2text"
 	log "github.com/sirupsen/logrus"
-	gomail "gopkg.in/mail.v2"
+	gomail "github.com/go-mail/mail"
 )
 
 type (
