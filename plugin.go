@@ -5,10 +5,10 @@ import (
 	"crypto/tls"
 	"os"
 
-	log "github.com/sirupsen/logrus"
 	"github.com/aymerick/douceur/inliner"
 	"github.com/drone/drone-go/template"
 	"github.com/jaytaylor/html2text"
+	log "github.com/sirupsen/logrus"
 	gomail "gopkg.in/mail.v2"
 )
 

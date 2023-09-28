@@ -3,8 +3,8 @@ package main
 import (
 	"os"
 
-	log "github.com/sirupsen/logrus"
 	"github.com/joho/godotenv"
+	log "github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
 )
 
